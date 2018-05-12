@@ -1,7 +1,6 @@
-# TODO tags
 """
 Keras's DirectoryIterator modified to support six channels.
-Source: https://github.com/keras-team/keras/blob/master/keras/preprocessing/image.py#L1453
+Source: https://github.com/keras-team/keras/blob/master/keras/preprocessing/image.py
 """
 import os
 import numpy as np
@@ -13,49 +12,39 @@ from keras.preprocessing.image import Iterator, load_img, img_to_array, array_to
 from keras.preprocessing.image import  _list_valid_filenames_in_directory, _count_valid_files_in_directory
 
 
-def _iter_valid_files(directory, white_list_formats, tag):
-    """Iterates on files with extension in `white_list_formats` contained in `directory`.
+def _iter_valid_files(directory, tag):
+    """Iterates on files containing keyword `tag` contained in `directory`.
     # Arguments
         directory: Absolute path to the directory
             containing files to be counted
-        white_list_formats: Set of strings containing allowed extensions for
-            the files to be counted.
-        follow_links: Boolean.
+        tag: String.
     # Yields
-        Tuple of (root, filename) with extension in `white_list_formats`.
+        Tuple of (root, filename) with keyword `tag`.
     """
     def _recursive_list(subpath):
         return sorted(os.walk(subpath, followlinks=False),
                       key=lambda x: x[0])
     for root, _, files in _recursive_list(directory):
         for fname in sorted(files):
-            if tag in fname:
-                for extension in white_list_formats:
-                    if fname.lower().endswith('.' + extension):
-                        yield root, fname
+            if tag in fname.lower():
+                yield root, fname
 
 
-def _count_valid_files_in_directory(directory,
-                                    white_list_formats,
-                                    split,
-                                    tag):
-    """Counts files with extension in `white_list_formats` contained in `directory`.
+def _count_valid_files_in_directory(directory, split, tag):
+    """Counts files with keyword `tag` contained in `directory`.
     # Arguments
         directory: absolute path to the directory
             containing files to be counted
-        white_list_formats: set of strings containing allowed extensions for
-            the files to be counted.
+        tag: String.
         split: tuple of floats (e.g. `(0.2, 0.6)`) to only take into
             account a certain fraction of files in each directory.
             E.g.: `segment=(0.6, 1.0)` would only account for last 40 percent
             of images in each directory.
-        follow_links: boolean.
     # Returns
-        the count of files with extension in `white_list_formats` contained in
-        the directory.
+        the count of files with keyword `tag` contained in the directory.
     """
     num_files = len(list(
-        _iter_valid_files(directory, white_list_formats, tag)))
+        _iter_valid_files(directory, tag)))
     if split:
         start, stop = int(split[0] * num_files), int(split[1] * num_files)
     else:
@@ -63,21 +52,18 @@ def _count_valid_files_in_directory(directory,
     return stop - start
 
 
-def _list_valid_filenames_in_directory(directory, white_list_formats, split,
-                                       class_indices, tag):
-    """Lists paths of files in `subdir` with extensions in `white_list_formats`.
+def _list_valid_filenames_in_directory(directory, split, class_indices, tag):
+    """Lists paths of files in `subdir` with keyword `tag`.
     # Arguments
         directory: absolute path to a directory containing the files to list.
             The directory name is used as class label
             and must be a key of `class_indices`.
-        white_list_formats: set of strings containing allowed extensions for
-            the files to be counted.
         split: tuple of floats (e.g. `(0.2, 0.6)`) to only take into
             account a certain fraction of files in each directory.
             E.g.: `segment=(0.6, 1.0)` would only account for last 40 percent
             of images in each directory.
         class_indices: dictionary mapping a class name to its index.
-        follow_links: boolean.
+        tag: String.
     # Returns
         classes: a list of class indices
         filenames: the path of valid files in `directory`, relative from
@@ -87,15 +73,11 @@ def _list_valid_filenames_in_directory(directory, white_list_formats, split,
     """
     dirname = os.path.basename(directory)
     if split:
-        num_files = len(list(
-            _iter_valid_files(directory, white_list_formats, tag)))
+        num_files = len(list(_iter_valid_files(directory, tag)))
         start, stop = int(split[0] * num_files), int(split[1] * num_files)
-        valid_files = list(
-            _iter_valid_files(
-                directory, white_list_formats, tag))[start: stop]
+        valid_files = list(_iter_valid_files(directory, tag))[start: stop]
     else:
-        valid_files = _iter_valid_files(
-            directory, white_list_formats, tag)
+        valid_files = _iter_valid_files(directory, tag)
     classes = []
     filenames = []
     for root, fname in valid_files:
@@ -108,7 +90,9 @@ def _list_valid_filenames_in_directory(directory, white_list_formats, split,
 
 
 class DirectoryIterator(Iterator):
-    """Iterator capable of reading images from a directory on disk.
+    """Iterator capable of reading two map type images at once from a directory
+    on disk (e.g. satellite and roadmap types). The arrays returned by this
+    iterator have six channels (i.e. three RGB channels per map type). 
     # Arguments
         directory: Path to the directory to read images from.
             Each subdirectory in this directory will be
@@ -119,6 +103,9 @@ class DirectoryIterator(Iterator):
         class_mode: Mode for yielding the targets:
             `"binary"`: binary targets (if there are only two classes),
             `None`: no targets get yielded (only input images are yielded).
+        tags: A tuple of two tuples, each containing 1) a keyword for
+            distingushing filenames of the two different map types, and
+            2) file extensions for images of these different map types.
         batch_size: Integer, size of a batch.
         shuffle: Boolean, whether to shuffle the data between epochs.
         seed: Random seed for data shuffling.
@@ -139,7 +126,7 @@ class DirectoryIterator(Iterator):
     """
     def __init__(self, directory, image_data_generator,
                  target_size=(256, 256), class_mode='binary',
-                 tags=('satellite', 'roadmap'),
+                 tags=(('satellite', 'jpg'), ('roadmap', 'png')),
                  batch_size=32, shuffle=True, seed=None,
                  data_format=None, save_to_dir=None, save_prefix='',
                  save_format='png', subset=None, interpolation='nearest'):
@@ -150,7 +137,10 @@ class DirectoryIterator(Iterator):
         self.target_size = tuple(target_size)
         if len(tags) != 2:
             raise ValueError('Invalid tags:', tags,
-                             '; expected tuple of two strings.')
+                             '; expected tuple of two tuples.')
+        if len(tags[0]) != 2 or len(tags[1]) != 2:
+            raise ValueError('Invalid tags:', tags,
+                             '; expected tuples of two strings.')
         self.tags = tags
         self.data_format = data_format
         if self.data_format == 'channels_last':
@@ -177,7 +167,6 @@ class DirectoryIterator(Iterator):
         else:
             split = None
         self.subset = subset
-        white_list_formats = {'png', 'jpg', 'jpeg'}
         # First, count the number of samples and classes.
         self.samples = 0
         classes = []
@@ -189,9 +178,7 @@ class DirectoryIterator(Iterator):
         self.class_indices = dict(zip(classes, range(len(classes))))
         pool = multiprocessing.pool.ThreadPool()
         function_partial = partial(_count_valid_files_in_directory,
-                                   white_list_formats=white_list_formats,
-                                   tag=self.tags[0],
-                                   split=split)
+                                   tag=self.tags[0][0], split=split)
         self.samples = sum(pool.map(function_partial,
                                     (os.path.join(directory, subdir)
                                      for subdir in classes)))
@@ -206,8 +193,8 @@ class DirectoryIterator(Iterator):
         for dirpath in (os.path.join(directory, subdir) for subdir in classes):
             results.append(
                 pool.apply_async(_list_valid_filenames_in_directory,
-                                 (dirpath, white_list_formats, split,
-                                  self.class_indices, self.tags[0])))
+                                 (dirpath, split,
+                                  self.class_indices, self.tags[0][0])))
         for res in results:
             classes, filenames = res.get()
             self.classes[i:i + len(classes)] = classes
@@ -227,12 +214,14 @@ class DirectoryIterator(Iterator):
         # build batch of image data
         for i, j in enumerate(index_array):
             fname = self.filenames[j]
+            fname2 = fname.replace(self.tags[0][0], self.tags[1][0])
+            fname2 = os.path.splitext(fname2)[0] + '.' + self.tags[1][1]
             img1 = load_img(os.path.join(self.directory, fname),
                             grayscale=False,
                             target_size=self.target_size,
                             interpolation=self.interpolation)
             x1 = img_to_array(img1, data_format=self.data_format)
-            img2 = load_img(os.path.join(self.directory, fname.replace(self.tags[0], self.tags[1])),
+            img2 = load_img(os.path.join(self.directory, fname2),
                             grayscale=False,
                             target_size=self.target_size,
                             interpolation=self.interpolation)
