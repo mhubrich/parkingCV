@@ -3,6 +3,12 @@ Keras's ImageDataGenerator modified to support six channels.
 Source: https://github.com/keras-team/keras/blob/master/keras/preprocessing/image.py
 """
 import numpy as np
+import warnings
+import keras.backend as K
+from keras.preprocessing.image import flip_axis, random_brightness, random_channel_shift
+from keras.preprocessing.image import transform_matrix_offset_center, apply_transform
+
+from utils.preprocessing.directory_iterator import DirectoryIterator
 
 
 class ImageDataGenerator(object):
@@ -18,6 +24,7 @@ class ImageDataGenerator(object):
         zca_epsilon: epsilon for ZCA whitening. Default is 1e-6.
         zca_whitening: Boolean. Apply ZCA whitening.
         rotation_range: Int. Degree range for random rotations.
+        brightness_range: Tuple of floats. Random brightness range.
         channel_shift_range: Float. Range for random channel shifts.
         fill_mode: One of {"constant", "nearest", "reflect" or "wrap"}.
             Default is 'nearest'.
@@ -38,13 +45,6 @@ class ImageDataGenerator(object):
             (before applying any other transformation).
         data_format: Image data format,
             either "channels_first" or "channels_last".
-            "channels_last" mode means that the images should have shape
-            `(samples, height, width, channels)`,
-            "channels_first" mode means that the images should have shape
-            `(samples, channels, height, width)`.
-            It defaults to the `image_data_format` value found in your
-            Keras config file at `~/.keras/keras.json`.
-            If you never set it, then it will be "channels_last".
         validation_split: Float. Fraction of images reserved for validation
             (strictly between 0 and 1).
     """
@@ -151,20 +151,10 @@ class ImageDataGenerator(object):
         # Arguments
             directory: Path to the target directory.
                 It should contain one subdirectory per class.
-                Any PNG, JPG, BMP, PPM or TIF images
-                inside each of the subdirectories directory tree
-                will be included in the generator.
-                See [this script](https://gist.github.com/fchollet/0830affa1f7f19fd47b06d4cf89ed44d)
-                for more details.
             target_size: Tuple of integers `(height, width)`,
                 default: `(256, 256)`.
                 The dimensions to which all images found will be resized.
-            class_mode: One of "categorical", "binary", "sparse",
-                "input", or None. Default: "categorical".
-                Determines the type of label arrays that are returned:
-                - "binary" will be 1D binary labels,
-                    "sparse" will be 1D integer labels,
-                If None, no labels are returned
+            class_mode: One of "binary" or None. Default: "binary".
             batch_size: Size of the batches of data (default: 32).
             shuffle: Whether to shuffle the data (default: True)
             seed: Optional random seed for shuffling and transformations.
@@ -187,34 +177,42 @@ class ImageDataGenerator(object):
         # Returns
             A `DirectoryIterator` yielding tuples of `(x, y)`
                 where `x` is a numpy array containing a batch
-                of images with shape `(batch_size, *target_size, channels)`
+                of images with shape `(batch_size, *target_size, 6)`
                 and `y` is a numpy array of corresponding labels.
         """
         return DirectoryIterator(
             directory, self,
             target_size=target_size, class_mode=class_mode,
-            tags=tags,
-            data_format=self.data_format,
+            tags=tags, data_format=self.data_format,
             batch_size=batch_size, shuffle=shuffle, seed=seed,
-            save_to_dir=save_to_dir,
-            save_prefix=save_prefix,
-            save_format=save_format,
-            subset=subset,
-            interpolation=interpolation)
+            save_to_dir=save_to_dir, save_prefix=save_prefix,
+            save_format=save_format, subset=subset, interpolation=interpolation)
 
     def standardize(self, x):
-        """Applies the normalization configuration to a batch of inputs.
+        """Applies the normalization configuration to a single image tensor.
+        Samplewise center and std normalization are applied to satellite and
+        roadmap separately.
         # Arguments
-            x: Batch of inputs to be normalized.
+            x: Single image tensor to be normalized.
         # Returns
-            The inputs, normalized.
+            Image tensor, normalized.
         """
+        x = np.moveaxis(x, self.channel_axis-1, -1)
+        x_satellite = x[:,:,0:3]
+        x_roadmap = x[:,:,3:6]
+
         if self.rescale:
-            x *= self.rescale
+            x_satellite *= self.rescale
+            x_roadmap *= self.rescale
         if self.samplewise_center:
-            x -= np.mean(x, keepdims=True)
+            x_satellite -= np.mean(x_satellite, keepdims=True)
+            x_roadmap -= np.mean(x_roadmap, keepdims=True)
         if self.samplewise_std_normalization:
-            x /= (np.std(x, keepdims=True) + K.epsilon())
+            x_satellite /= (np.std(x_satellite, keepdims=True) + K.epsilon())
+            x_roadmap /= (np.std(x_roadmap, keepdims=True) + K.epsilon())
+
+        x = np.concatenate([x_satellite, x_roadmap], axis=-1)
+        x = np.moveaxis(x, -1, self.channel_axis-1)
 
         if self.featurewise_center:
             if self.mean is not None:
@@ -247,6 +245,8 @@ class ImageDataGenerator(object):
 
     def random_transform(self, x, seed=None):
         """Randomly augments a single image tensor.
+        Rotation and image flips are applied to both satellite and roadmap.
+        Channel shifts and brightness changes are applied to satellite only.
         # Arguments
             x: 3D tensor, single image.
             seed: Random seed.
@@ -284,10 +284,6 @@ class ImageDataGenerator(object):
             x = apply_transform(x, transform_matrix, img_channel_axis,
                                 fill_mode=self.fill_mode, cval=self.cval)
 
-        if self.channel_shift_range != 0:
-            x = random_channel_shift(x,
-                                     self.channel_shift_range,
-                                     img_channel_axis)
         if self.horizontal_flip:
             if np.random.random() < 0.5:
                 x = flip_axis(x, img_col_axis)
@@ -296,8 +292,20 @@ class ImageDataGenerator(object):
             if np.random.random() < 0.5:
                 x = flip_axis(x, img_row_axis)
 
+        x = np.moveaxis(x, img_channel_axis, -1)
+        x_satellite = x[:,:,0:3]
+        x_roadmap = x[:,:,3:6]
+
+        if self.channel_shift_range != 0:
+            x_satellite = random_channel_shift(x_satellite,
+                                     self.channel_shift_range,
+                                     img_channel_axis)
+
         if self.brightness_range is not None:
-            x = random_brightness(x, self.brightness_range)
+            x_satellite = random_brightness(x_satellite, self.brightness_range)
+
+        x = np.concatenate([x_satellite, x_roadmap], axis=-1)
+        x = np.moveaxis(x, -1, img_channel_axis)
 
         return x
 
@@ -310,9 +318,6 @@ class ImageDataGenerator(object):
         `featurewise_std_normalization` or `zca_whitening` are set to True.
         # Arguments
             x: Sample data. Should have rank 4.
-             In case of grayscale data,
-             the channels axis should have value 1, and in case
-             of RGB data, it should have value 3.
             augment: Boolean (default: False).
                 Whether to fit on randomly augmented samples.
             rounds: Int (default: 1).
@@ -324,13 +329,12 @@ class ImageDataGenerator(object):
         if x.ndim != 4:
             raise ValueError('Input to `.fit()` should have rank 4. '
                              'Got array with shape: ' + str(x.shape))
-        if x.shape[self.channel_axis] not in {1, 3, 4}:
+        if x.shape[self.channel_axis] != 6:
             warnings.warn(
-                'Expected input to be images (as Numpy array) '
-                'following the data format convention "' +
+                'Expected input to be Numpy array of stacked satellite and '
+                'roadmap RGB images following the data format convention "' +
                 self.data_format + '" (channels on axis ' +
-                str(self.channel_axis) + '), i.e. expected '
-                'either 1, 3 or 4 channels on axis ' +
+                str(self.channel_axis) + '), i.e. expected 6 channels on axis ' +
                 str(self.channel_axis) + '. '
                 'However, it was passed an array with shape ' +
                 str(x.shape) + ' (' + str(x.shape[self.channel_axis]) +
@@ -363,6 +367,7 @@ class ImageDataGenerator(object):
             self.std = np.reshape(self.std, broadcast_shape)
             x /= (self.std + K.epsilon())
 
+        # TODO ZCA whitening only for satellite? Perhaps separately for satellite and roadmap?
         if self.zca_whitening:
             flat_x = np.reshape(
                 x, (x.shape[0], x.shape[1] * x.shape[2] * x.shape[3]))
