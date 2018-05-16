@@ -58,7 +58,7 @@ class ImageDataGenerator(object):
                  rotation_range=0.,
                  brightness_range=None,
                  channel_shift_range=0.,
-                 fill_mode='nearest',
+                 fill_mode='reflect',
                  cval=0.,
                  horizontal_flip=False,
                  vertical_flip=False,
