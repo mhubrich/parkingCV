@@ -9,6 +9,7 @@ from keras.preprocessing.image import flip_axis, random_brightness, random_chann
 from keras.preprocessing.image import transform_matrix_offset_center, apply_transform
 
 from utils.preprocessing.directory_iterator import DirectoryIterator
+from utils.preprocessing.file_iterator import FileIterator
 
 
 class ImageDataGenerator(object):
@@ -182,6 +183,55 @@ class ImageDataGenerator(object):
         """
         return DirectoryIterator(
             directory, self,
+            target_size=target_size, class_mode=class_mode,
+            tags=tags, data_format=self.data_format,
+            batch_size=batch_size, shuffle=shuffle, seed=seed,
+            save_to_dir=save_to_dir, save_prefix=save_prefix,
+            save_format=save_format, subset=subset, interpolation=interpolation)
+
+    def flow_from_files(self, files,
+                        target_size=(256, 256), class_mode='binary',
+                        tags=(('satellite', 'jpg'), ('roadmap', 'png')),
+                        batch_size=32, shuffle=True, seed=None,
+                        save_to_dir=None,
+                        save_prefix='',
+                        save_format='png',
+                        subset=None,
+                        interpolation='nearest'):
+        """Takes a list of fielnames & generates batches of augmented data.
+        # Arguments
+            files: List of filenames (absolute paths).
+            target_size: Tuple of integers `(height, width)`,
+                default: `(256, 256)`.
+                The dimensions to which all images found will be resized.
+            class_mode: One of "binary" or None. Default: "binary".
+            batch_size: Size of the batches of data (default: 32).
+            shuffle: Whether to shuffle the data (default: True)
+            seed: Optional random seed for shuffling and transformations.
+            save_to_dir: None or str (default: None).
+                This allows you to optionally specify
+                a directory to which to save
+                the augmented pictures being generated
+                (useful for visualizing what you are doing).
+            save_prefix: Str. Prefix to use for filenames of saved pictures
+                (only relevant if `save_to_dir` is set).
+            save_format: One of "png", "jpeg"
+                (only relevant if `save_to_dir` is set). Default: "png".
+            subset: Subset of data (`"training"` or `"validation"`) if
+                `validation_split` is set in `ImageDataGenerator`.
+            interpolation: Interpolation method used to
+                resample the image if the
+                target size is different from that of the loaded image.
+                Supported methods are `"nearest"`, `"bilinear"`,
+                and `"bicubic"`.
+        # Returns
+            A `FileIterator` yielding tuples of `(x, y)`
+                where `x` is a numpy array containing a batch
+                of images with shape `(batch_size, *target_size, 6)`
+                and `y` is a numpy array of corresponding labels.
+        """
+        return FileIterator(
+            files, self,
             target_size=target_size, class_mode=class_mode,
             tags=tags, data_format=self.data_format,
             batch_size=batch_size, shuffle=shuffle, seed=seed,
@@ -375,3 +425,13 @@ class ImageDataGenerator(object):
             u, s, _ = linalg.svd(sigma)
             s_inv = 1. / np.sqrt(s[np.newaxis] + self.zca_epsilon)
             self.principal_components = (u * s_inv).dot(u.T)
+
+    def set_stats(self, mean, std):
+        if len(mean) != 6:
+            raise ValueError('Invalid mean-array: ', mean,
+                             '; expected array of length 6.')
+        self.mean = mean
+        if len(std) != 6:
+            raise ValueError('Invalid std-array: ', std,
+                             '; expected array of length 6.')
+        self.std = std
