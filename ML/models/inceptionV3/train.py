@@ -7,6 +7,8 @@ import numpy as np
 from keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
 from utils.preprocessing.image_data_generator import ImageDataGenerator
+from utils.stratification import train_val_test_split
+from utils.misc import list_files
 from ML.models.inceptionV3.model import get_model
 
 
@@ -141,8 +143,17 @@ if __name__ == "__main__":
     seed = 0
     path_weights = 'weights.{epoch:02d}-{val_loss:.3f}.hdf5'
     path_output = 'training.log'
+    path_images = None # TODO
+    path_coords_pos = None # TODO
+    path_coords_neg = None # TODO
+    files = list_files(path_images, 'satellite')
     # 0) Get data in form of iterators
-    f_train, f_val, f_test = train_val_test_split(..., seed=0)
+    f_train, f_val, f_test, = train_val_test_split(files,
+                                                   path_coords_pos,
+                                                   path_coords_neg,
+                                                   val_size=0.2,
+                                                   test_size=0.2,
+                                                   seed=seed)
     iterator_train, iterator_val, iterator_test = get_data(f_train, f_val, f_test,
                                                            target_size=target_size,
                                                            batch_size=batch_size,

@@ -26,7 +26,7 @@ def _iter_valid_files(directory, tag):
                       key=lambda x: x[0])
     for root, _, files in _recursive_list(directory):
         for fname in sorted(files):
-            if tag in fname.lower():
+            if tag.lower() in fname.lower():
                 yield root, fname
 
 
@@ -92,7 +92,7 @@ def _list_valid_filenames_in_directory(directory, split, class_indices, tag):
 class DirectoryIterator(Iterator):
     """Iterator capable of reading two map type images at once from a directory
     on disk (e.g. satellite and roadmap types). The arrays returned by this
-    iterator have six channels (i.e. three RGB channels per map type). 
+    iterator have six channels (i.e. three RGB channels per map type).
     # Arguments
         directory: Path to the directory to read images from.
             Each subdirectory in this directory will be
