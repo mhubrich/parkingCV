@@ -37,9 +37,9 @@ def train_val_test_split(files, path_coords_pos, path_coords_neg, val_size=0.2, 
         raise ValueError('Split values should be in range [0,1].')
     coords_pos = load_coords(path_coords_pos)
     coords_neg = load_coords(path_coords_neg)
-    zoom = int(files[0].split('_')[3])
-    width = int(files[0].split('_')[2].split('x')[0])
-    tag = os.path.splitext(files[0])[0].split('_')[4]
+    zoom = int(files[0].split('_')[-2])
+    width = int(files[0].split('_')[-3].split('x')[0])
+    tag = os.path.splitext(files[0])[0].split('_')[-1]
     groups = get_groups(coords_pos, coords_neg, files, width=width, zoom=zoom, tag=tag)
     ind, ind_test = train_test_split(np.arange(len(files)),
                                      test_size=test_size, stratify=groups,
