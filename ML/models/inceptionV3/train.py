@@ -15,6 +15,13 @@ from ML.models.inceptionV3.model import get_model
 VERBOSITY = 1
 
 
+def preprocess_input(x):
+    x /= 255.
+    x -= 0.5
+    x *= 2.
+    return x
+
+
 def fit_stats(iterator, row_axis=1, col_axis=2, mean=None, std=None):
     if mean is None:
         mean = np.zeros(6, dtype=np.float32)
@@ -59,14 +66,14 @@ def get_data(f_train, f_val, f_test, target_size=(299, 299), batch_size=32, seed
     #                                                  shuffle=False,
     #                                                  seed=seed)
     # mean, std = fit_stats(iterator_stats, mean=None, std=None)
-    generator_train = ImageDataGenerator(rescale=1/255.,
+    generator_train = ImageDataGenerator(rescale=preprocess_input,
                                          rotation_range=90.,
                                          horizontal_flip=True,
                                          vertical_flip=True,
                                          brightness_range=(0.95, 1.05),
                                          channel_shift_range=10.)
-    generator_val = ImageDataGenerator(rescale=1/255.)
-    generator_test = ImageDataGenerator(rescale=1/255.)
+    generator_val = ImageDataGenerator(rescale=preprocess_input)
+    generator_test = ImageDataGenerator(rescale=preprocess_input)
     # generator_train.set_stats(mean, std)
     # generator_val.set_stats(mean, std)
     # generator_test.set_stats(mean, std)

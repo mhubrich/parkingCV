@@ -40,10 +40,8 @@ class ImageDataGenerator(object):
             when `fill_mode = "constant"`.
         horizontal_flip: Boolean. Randomly flip inputs horizontally.
         vertical_flip: Boolean. Randomly flip inputs vertically.
-        rescale: rescaling factor. Defaults to None.
-            If None or 0, no rescaling is applied,
-            otherwise we multiply the data by the value provided
-            (before applying any other transformation).
+        rescale: rescaling function. Defaults to None.
+            Takes exactly one array as input and returns this rescaled array.
         data_format: Image data format,
             either "channels_first" or "channels_last".
         validation_split: Float. Fraction of images reserved for validation
@@ -247,22 +245,21 @@ class ImageDataGenerator(object):
         # Returns
             Image tensor, normalized.
         """
-        x = np.moveaxis(x, self.channel_axis-1, -1)
-        x_satellite = x[:,:,0:3]
-        x_roadmap = x[:,:,3:6]
-
         if self.rescale:
-            x_satellite *= self.rescale
-            x_roadmap *= self.rescale
-        if self.samplewise_center:
-            x_satellite -= np.mean(x_satellite, keepdims=True)
-            x_roadmap -= np.mean(x_roadmap, keepdims=True)
-        if self.samplewise_std_normalization:
-            x_satellite /= (np.std(x_satellite, keepdims=True) + K.epsilon())
-            x_roadmap /= (np.std(x_roadmap, keepdims=True) + K.epsilon())
+            x = self.rescale(x)
 
-        x = np.concatenate([x_satellite, x_roadmap], axis=-1)
-        x = np.moveaxis(x, -1, self.channel_axis-1)
+        if self.samplewise_center or self.samplewise_std_normalization:
+            x = np.moveaxis(x, self.channel_axis-1, -1)
+            x_satellite = x[:,:,0:3]
+            x_roadmap = x[:,:,3:6]
+            if self.samplewise_center:
+                x_satellite -= np.mean(x_satellite, keepdims=True)
+                x_roadmap -= np.mean(x_roadmap, keepdims=True)
+            if self.samplewise_std_normalization:
+                x_satellite /= (np.std(x_satellite, keepdims=True) + K.epsilon())
+                x_roadmap /= (np.std(x_roadmap, keepdims=True) + K.epsilon())
+            x = np.concatenate([x_satellite, x_roadmap], axis=-1)
+            x = np.moveaxis(x, -1, self.channel_axis-1)
 
         if self.featurewise_center:
             if self.mean is not None:
