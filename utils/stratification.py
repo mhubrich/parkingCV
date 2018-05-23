@@ -32,23 +32,43 @@ def get_groups(coords_pos, coords_neg, files, width=299, zoom=19, tag='satellite
     return groups
 
 
+#def train_val_test_split(files, path_coords_pos, path_coords_neg, val_size=0.2, test_size=0.2, seed=None):
+#    if val_size >= 1 or test_size >= 1:
+#        raise ValueError('Split values should be in range [0,1].')
+#    coords_pos = load_coords(path_coords_pos)
+#    coords_neg = load_coords(path_coords_neg)
+#    zoom = int(files[0].split('_')[-2])
+#    width = int(files[0].split('_')[-3].split('x')[0])
+#    tag = os.path.splitext(files[0])[0].split('_')[-1]
+#    groups = get_groups(coords_pos, coords_neg, files, width=width, zoom=zoom, tag=tag)
+#    ind, ind_test = train_test_split(np.arange(len(files)),
+#                                     test_size=test_size, stratify=groups,
+#                                     shuffle=True, random_state=seed)
+#    ind_train, ind_val = train_test_split(ind,
+#                                          test_size=val_size, stratify=groups[ind],
+#                                          shuffle=True, random_state=seed)
+#    file_array = np.array(files)
+#    X_train = list(files_array[ind_train])
+#    X_val = list(files_array[ind_val])
+#    X_test = list(files_array[ind_test])
+#    return X_train, X_val, X_test
+
+
 def train_val_test_split(files, path_coords_pos, path_coords_neg, val_size=0.2, test_size=0.2, seed=None):
     if val_size >= 1 or test_size >= 1:
         raise ValueError('Split values should be in range [0,1].')
-    coords_pos = load_coords(path_coords_pos)
-    coords_neg = load_coords(path_coords_neg)
-    zoom = int(files[0].split('_')[-2])
-    width = int(files[0].split('_')[-3].split('x')[0])
-    tag = os.path.splitext(files[0])[0].split('_')[-1]
-    groups = get_groups(coords_pos, coords_neg, files, width=width, zoom=zoom, tag=tag)
+    y = np.zeros(len(files), dtype=np.int32)
+    for i, f in enumerate(files):
+        y[i] = 1 if 'pos' in os.path.split(f)[-2] else 0
     ind, ind_test = train_test_split(np.arange(len(files)),
-                                     test_size=test_size, stratify=groups,
+                                     test_size=test_size, stratify=y,
                                      shuffle=True, random_state=seed)
     ind_train, ind_val = train_test_split(ind,
-                                          test_size=val_size, stratify=groups[ind],
+                                          test_size=val_size, stratify=y[ind],
                                           shuffle=True, random_state=seed)
-    file_array = np.array(files)
+    files_array = np.array(files)
     X_train = list(files_array[ind_train])
     X_val = list(files_array[ind_val])
     X_test = list(files_array[ind_test])
     return X_train, X_val, X_test
+

@@ -4,6 +4,7 @@ TODO:   * train, val, test split: stratification based on lat/long
 """
 import numpy as np
 
+from keras.optimizers import RMSprop
 from keras.callbacks import ModelCheckpoint, EarlyStopping, CSVLogger
 
 from utils.preprocessing.image_data_generator import ImageDataGenerator
@@ -95,7 +96,7 @@ def get_data(f_train, f_val, f_test, target_size=(299, 299), batch_size=32, seed
     return iterator_train, iterator_val, iterator_test
 
 
-def get_model(model=None, target_size=(299, 299), dense=[1024], freeze=311):
+def set_model(model=None, target_size=(299, 299), dense=[1024], freeze=311):
     if model is None:
         model = get_model(shape=target_size + (6,), dense=dense)
 
@@ -104,7 +105,8 @@ def get_model(model=None, target_size=(299, 299), dense=[1024], freeze=311):
     for layer in model.layers[freeze+1:]:
         layer.trainable = True
 
-    model.compile(optimizer='rmsprop',
+    rmsprop = RMSprop(lr=0.001, rho=0.9, decay=1.0)
+    model.compile(optimizer=rmsprop,
                   loss='binary_crossentropy',
                   metrics=['accuracy'])
     return model
@@ -112,7 +114,7 @@ def get_model(model=None, target_size=(299, 299), dense=[1024], freeze=311):
 
 def train(iterator_train, iterator_val, model, epochs=10,
           path_weights=None, path_logs=None):
-    if path_weights is not None and path_output is not None:
+    if path_weights is not None and path_logs is not None:
         callbacks = [ModelCheckpoint(path_weights,
                                      save_best_only=True,
                                      save_weights_only=True),
@@ -147,11 +149,11 @@ def evaluate(iterator_test, model):
 
 if __name__ == "__main__":
     target_size = (224, 224)
-    batch_size = 32
+    batch_size = 64
     seed = 0
     path_weights = 'weights.{epoch:02d}-{val_loss:.3f}.hdf5'
     path_logs = 'training.log'
-    path_images = None # TODO
+    path_images = '/home/mhubrich/maps_300x300_resized_224x224/' # TODO
     path_coords_pos = None # TODO
     path_coords_neg = None # TODO
     files = list_files(path_images, 'satellite')
@@ -167,11 +169,13 @@ if __name__ == "__main__":
                                                            batch_size=batch_size,
                                                            seed=seed)
     # 1) Train FC layer for one epoch
-    model = get_model(model=None, target_size=target_size, dense=[1024], freeze=311)
+    model = set_model(model=None, target_size=target_size, dense=[1024], freeze=311)
     model = train(iterator_train, iterator_val, model, epochs=1)
     # 2) Train some of the last convolutional layers + FC layers
-    model = get_model(model=model, target_size=target_size, dense=[1024], freeze=228)
+    model = set_model(model=model, target_size=target_size, dense=[1024], freeze=164)
     model = train(iterator_train, iterator_val, model, path_weights=path_weights, path_logs=path_logs, epochs=10)
     # 3) Evaluate model on test set
-    results = evaluate(iterator_test, model)
-    print(results)
+    loss, acc = evaluate(iterator_test, model)
+    print('=== Results on test set ===')
+    print('Loss: %.3f, Acc: %.3f' % (loss, acc))
+

@@ -49,7 +49,6 @@ class FileIterator(Iterator):
             data_format = K.image_data_format()
         self.filenames = files
         self.image_data_generator = image_data_generator
-        print(target_size)
         self.target_size = tuple(target_size)
         if len(tags) != 2:
             raise ValueError('Invalid tags:', tags,
@@ -119,12 +118,12 @@ class FileIterator(Iterator):
             fname = self.filenames[j]
             fname2 = fname.replace(self.tags[0][0], self.tags[1][0])
             fname2 = os.path.splitext(fname2)[0] + '.' + self.tags[1][1]
-            img1 = load_img(os.path.join(self.directory, fname),
+            img1 = load_img(fname,
                             grayscale=False,
                             target_size=self.target_size,
                             interpolation=self.interpolation)
             x1 = img_to_array(img1, data_format=self.data_format)
-            img2 = load_img(os.path.join(self.directory, fname2),
+            img2 = load_img(fname2,
                             grayscale=False,
                             target_size=self.target_size,
                             interpolation=self.interpolation)
