@@ -5,13 +5,19 @@ from utils.misc import list_files
 
 def preprocess_input(x):
     x /= 255.
-    x -= 0.5
-    x *= 2.
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+    x[..., 0] -= mean[0]
+    x[..., 1] -= mean[1]
+    x[..., 2] -= mean[2]
+    x[..., 0] /= std[0]
+    x[..., 1] /= std[1]
+    x[..., 2] /= std[2]
     return x
 
 
 if __name__ == "__main__":
-    model = 'inception'
+    model = 'densenet121'
     target_size = (224, 224)
     batch_size = 32
     seed = 0
@@ -30,7 +36,7 @@ if __name__ == "__main__":
                       preprocess_input=preprocess_input,
                       target_size=target_size,
                       dense=[1024],
-                      freeze=311,
+                      freeze=426,
                       batch_size=batch_size,
                       seed=seed,
                       dir_weights=dir_weights,

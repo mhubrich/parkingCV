@@ -11,7 +11,7 @@ def preprocess_input(x):
 
 
 if __name__ == "__main__":
-    model = 'inception'
+    model = 'xception'
     target_size = (224, 224)
     batch_size = 32
     seed = 0
@@ -30,7 +30,7 @@ if __name__ == "__main__":
                       preprocess_input=preprocess_input,
                       target_size=target_size,
                       dense=[1024],
-                      freeze=311,
+                      freeze=132,
                       batch_size=batch_size,
                       seed=seed,
                       dir_weights=dir_weights,
