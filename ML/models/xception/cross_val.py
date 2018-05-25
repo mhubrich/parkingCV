@@ -17,7 +17,8 @@ if __name__ == "__main__":
     target_size = (224, 224)
     batch_size = 32
     seed = 0
-    k = 10
+    k = 7
+    m = 3
     dir_weights = '/home/mhubrich/.parkingCV_weights/'
     path_images = '/home/mhubrich/maps_300x300_resized_224x224/'
     path_checkpoints = 'weights.{epoch:02d}-{val_loss:.3f}.hdf5'
@@ -27,9 +28,9 @@ if __name__ == "__main__":
                                                                     k=k,
                                                                     val_size=0.2,
                                                                     seed=seed)
-    losses = np.zeros(k, dtype=np.float32)
-    accs = np.zeros(k, dtype=np.float32)
-    for i in range(k):
+    losses = np.zeros(m, dtype=np.float32)
+    accs = np.zeros(m, dtype=np.float32)
+    for i in range(m):
         print('Starting fold %02d/%d.' % (i+1, k))
         loss, acc = train(model, files_train[i], files_val[i], files_test[i],
                           preprocess_input=preprocess_input,
@@ -40,7 +41,8 @@ if __name__ == "__main__":
                           seed=seed,
                           dir_weights=dir_weights,
                           path_checkpoints=path_checkpoints,
-                          path_logs=path_logs.format(fold=i+1))
+                          path_logs=path_logs.format(fold=i+1),
+                          mode='evaluate')
         print('Test set results: Loss: %.3f - Acc: %.3f' % (loss, acc))
         losses[i] = loss
         accs[i] = acc

@@ -5,14 +5,12 @@ from utils.misc import list_files
 
 def preprocess_input(x):
     x /= 255.
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
-    x[..., 0] -= mean[0]
-    x[..., 1] -= mean[1]
-    x[..., 2] -= mean[2]
-    x[..., 0] /= std[0]
-    x[..., 1] /= std[1]
-    x[..., 2] /= std[2]
+    x[..., 0] -= 0.485
+    x[..., 1] -= 0.456
+    x[..., 2] -= 0.406
+    x[..., 0] /= 0.229
+    x[..., 1] /= 0.224
+    x[..., 2] /= 0.225
     return x
 
 
@@ -41,7 +39,8 @@ if __name__ == "__main__":
                       seed=seed,
                       dir_weights=dir_weights,
                       path_checkpoints=path_checkpoints,
-                      path_logs=path_logs)
+                      path_logs=path_logs,
+                      mode='evaluate')
     
     print('Test results: Loss: %.3f - Acc: %.3f' % (loss, acc))
 

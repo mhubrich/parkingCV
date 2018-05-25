@@ -35,7 +35,8 @@ if __name__ == "__main__":
                       seed=seed,
                       dir_weights=dir_weights,
                       path_checkpoints=path_checkpoints,
-                      path_logs=path_logs)
+                      path_logs=path_logs,
+                      mode='evaluate')
     
     print('Test results: Loss: %.3f - Acc: %.3f' % (loss, acc))
 

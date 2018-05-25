@@ -105,6 +105,15 @@ def evaluate(model, iterator_test):
                                     verbose=1)
 
 
+def predict(model, iterator_test):
+    return model.predict_generator(iterator_test,
+                                   steps=len(iterator_test),
+                                   max_queue_size=2*iterator_test.batch_size,
+                                   workers=3,
+                                   use_multiprocessing=True,
+                                   verbose=1)
+
+
 def train(model, files_train, files_val, files_test,
           preprocess_input=None,
           target_size=(224, 224),
@@ -114,10 +123,14 @@ def train(model, files_train, files_val, files_test,
           seed=None,
           dir_weights=None,
           path_checkpoints=None,
-          path_logs=None):
+          path_logs=None,
+          mode=None):
     if model is None or model.lower() not in ('inception', 'xception', 'densenet121'):
         raise ValueError('Invalid value for `model`: ', model,
-                         '; valid values are: inception, xception, densenet121.')
+                         '; valid values are: `inception`, `xception`, `densenet121`.')
+    if mode not in ('evaluate', 'predict', None):
+        raise ValueError('Invalid value for `mode`: ', mode,
+                         '; valid values are: `evaluate`, `predict` or `None`')
     # 0) Get the iterators for training, validation and testing
     iterator_train, iterator_val, iterator_test = get_data(files_train,
                                                            files_val, files_test,
@@ -136,10 +149,13 @@ def train(model, files_train, files_val, files_test,
     model = set_model(model=model, freeze=-1, lr=0.0001)
     model, path_best_weights = training(model, iterator_train, iterator_val,
                                         path_checkpoints=path_checkpoints,
-                                        path_logs=None,
+                                        path_logs=path_logs,
                                         epochs=7)
     # 3) Evaluate model on test set using best weights
     model.load_weights(path_best_weights)
-    loss, acc = evaluate(model, iterator_test)
-    return loss, acc
+    if mode == 'evaluate':
+        return evaluate(model, iterator_test)
+    if mode == 'predict':
+        return predict(model, iterator_test)
+    return model
 
