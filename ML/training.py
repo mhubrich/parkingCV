@@ -69,7 +69,7 @@ def training(model, iterator_train, iterator_val,
                  ReduceLROnPlateau(factor=0.5,
                                    patience=1,
                                    min_delta=0.005,
-                                   min_lr=1e-5,
+                                   min_lr=1e-6,
                                    verbose=1)]
     if path_checkpoints:
         model_checkpoint = MyModelCheckpoint(path_checkpoints,
@@ -137,7 +137,7 @@ def train(model, files_train, files_val, files_test,
     model, path_best_weights = training(model, iterator_train, iterator_val,
                                         path_checkpoints=path_checkpoints,
                                         path_logs=None,
-                                        epochs=10)
+                                        epochs=7)
     # 3) Evaluate model on test set using best weights
     model.load_weights(path_best_weights)
     loss, acc = evaluate(model, iterator_test)

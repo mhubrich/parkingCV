@@ -2,6 +2,7 @@ import os
 import json
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold
 
 from utils.misc import list_files
 
@@ -71,4 +72,25 @@ def train_val_test_split(files, path_coords_pos, path_coords_neg, val_size=0.2, 
     X_val = list(files_array[ind_val])
     X_test = list(files_array[ind_test])
     return X_train, X_val, X_test
+
+
+def kfold_train_val_test_split(files, k=10, val_size=0.2, seed=None):
+    skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=seed)
+    train, val, test, tmp = [], [], [], []
+    X = np.array(files)
+    y = np.zeros(len(files), dtype=np.int32)
+    for i, f in enumerate(files):
+        y[i] = 1 if 'pos' in os.path.split(f)[-2] else 0
+    for index, test_index in skf.split(X, y):
+        tmp.append(index)
+        test.append(X[test_index])
+    for index in tmp:
+        X_train, X_val, _, _ = train_test_split(X[index], y[index],
+                                                stratify=y[index],
+                                                test_size=val_size,
+                                                shuffle=True,
+                                                random_state=seed)
+        train.append(X_train)
+        val.append(X_val)
+    return train, val, test
 
