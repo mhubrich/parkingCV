@@ -1,4 +1,4 @@
-from ML.training import train
+from ML.training import train_eval
 from utils.stratification import train_val_test_split
 from utils.misc import list_files
 
@@ -30,17 +30,15 @@ if __name__ == "__main__":
                                                                val_size=0.2,
                                                                test_size=0.2,
                                                                seed=seed)
-    loss, acc = train(model, files_train, files_val, files_test,
-                      preprocess_input=preprocess_input,
-                      target_size=target_size,
-                      dense=[1024],
-                      freeze=426,
-                      batch_size=batch_size,
-                      seed=seed,
-                      dir_weights=dir_weights,
-                      path_checkpoints=path_checkpoints,
-                      path_logs=path_logs,
-                      mode='evaluate')
-    
-    print('Test results: Loss: %.3f - Acc: %.3f' % (loss, acc))
+    loss, acc = train_eval(model, files_train, files_val, files_test,
+                           preprocess_input=preprocess_input,
+                           target_size=target_size,
+                           dense=[1024],
+                           freeze=426,
+                           batch_size=batch_size,
+                           seed=seed,
+                           dir_weights=dir_weights,
+                           path_checkpoints=path_checkpoints,
+                           path_logs=path_logs)
 
+    print('Test results: Loss: %.3f - Acc: %.3f' % (loss, acc))

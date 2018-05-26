@@ -2,6 +2,7 @@
 This file provides the standardized function `train` for training
 various models, e.g. InceptionV3, Xception or DenseNet121.
 """
+import numpy as np
 from keras.optimizers import RMSprop
 from keras.callbacks import EarlyStopping, CSVLogger, ReduceLROnPlateau
 
@@ -106,15 +107,19 @@ def evaluate(model, iterator_test):
 
 
 def predict(model, iterator_test):
-    return model.predict_generator(iterator_test,
-                                   steps=len(iterator_test),
-                                   max_queue_size=2*iterator_test.batch_size,
-                                   workers=3,
-                                   use_multiprocessing=True,
-                                   verbose=1)
+    y_true = np.zeros(iterator_test.n, dtype=np.int32)
+    y_pred = np.zeros(iterator_test.n, dtype=np.int32)
+    i = 0
+    for _ in range(len(iterator_test)):
+        X, y = iterator_test.next()
+        pred = model.predict_on_batch(X)
+        y_true[i:len(y)] = y
+        y_pred[i:len(y)] = pred
+        i += len(y)
+    return y_true, y_pred
 
 
-def train(model, files_train, files_val, files_test,
+def train(model, iterator_train, iterator_val,
           preprocess_input=None,
           target_size=(224, 224),
           dense=[1024],
@@ -123,21 +128,7 @@ def train(model, files_train, files_val, files_test,
           seed=None,
           dir_weights=None,
           path_checkpoints=None,
-          path_logs=None,
-          mode=None):
-    if model is None or model.lower() not in ('inception', 'xception', 'densenet121'):
-        raise ValueError('Invalid value for `model`: ', model,
-                         '; valid values are: `inception`, `xception`, `densenet121`.')
-    if mode not in ('evaluate', 'predict', None):
-        raise ValueError('Invalid value for `mode`: ', mode,
-                         '; valid values are: `evaluate`, `predict` or `None`')
-    # 0) Get the iterators for training, validation and testing
-    iterator_train, iterator_val, iterator_test = get_data(files_train,
-                                                           files_val, files_test,
-                                                           preprocess_input=preprocess_input,
-                                                           target_size=target_size,
-                                                           batch_size=batch_size,
-                                                           seed=seed)
+          path_logs=None):
     # 1) Train only FC layer for one epoch
     model = set_model(model, dir_weights,
                       target_size=target_size,
@@ -153,9 +144,68 @@ def train(model, files_train, files_val, files_test,
                                         epochs=7)
     # 3) Evaluate model on test set using best weights
     model.load_weights(path_best_weights)
-    if mode == 'evaluate':
-        return evaluate(model, iterator_test)
-    if mode == 'predict':
-        return predict(model, iterator_test)
     return model
 
+
+def train_eval(model, files_train, files_val, files_test,
+               preprocess_input=None,
+               target_size=(224, 224),
+               dense=[1024],
+               freeze=132,
+               batch_size=32,
+               seed=None,
+               dir_weights=None,
+               path_checkpoints=None,
+               path_logs=None):
+    if model is None or model.lower() not in ('inception', 'xception', 'densenet121'):
+        raise ValueError('Invalid value for `model`: ', model,
+                         '; valid values are: `inception`, `xception`, `densenet121`.')
+    iterator_train, iterator_val, iterator_test = get_data(files_train,
+                                                           files_val, files_test,
+                                                           preprocess_input=preprocess_input,
+                                                           target_size=target_size,
+                                                           batch_size=batch_size,
+                                                           seed=seed)
+    model = train(model, iterator_train, iterator_val,
+                  preprocess_input=preprocess_input,
+                  target_size=target_size,
+                  dense=dense,
+                  freeze=freeze,
+                  batch_size=batch_size,
+                  seed=seed,
+                  dir_weights=dir_weights,
+                  path_checkpoints=path_checkpoints,
+                  path_logs=path_logs)
+    return evaluate(model, iterator_test)
+
+
+def train_predict(model, files_train, files_val, files_test,
+                  preprocess_input=None,
+                  target_size=(224, 224),
+                  dense=[1024],
+                  freeze=132,
+                  batch_size=32,
+                  seed=None,
+                  dir_weights=None,
+                  path_checkpoints=None,
+                  path_logs=None):
+    if model is None or model.lower() not in ('inception', 'xception', 'densenet121'):
+        raise ValueError('Invalid value for `model`: ', model,
+                         '; valid values are: `inception`, `xception`, `densenet121`.')
+    iterator_train, iterator_val, iterator_test = get_data(files_train,
+                                                           files_val, files_test,
+                                                           preprocess_input=preprocess_input,
+                                                           target_size=target_size,
+                                                           batch_size=batch_size,
+                                                           seed=seed)
+    model = train(model, iterator_train, iterator_val,
+                  preprocess_input=preprocess_input,
+                  target_size=target_size,
+                  dense=dense,
+                  freeze=freeze,
+                  batch_size=batch_size,
+                  seed=seed,
+                  dir_weights=dir_weights,
+                  path_checkpoints=path_checkpoints,
+                  path_logs=path_logs)
+    return predict(model, iterator_test)
