@@ -112,19 +112,21 @@ def predict_generator(model, generator,
             y_pred = all_outs[0][0]
         else:
             y_pred = np.concatenate(all_outs[0])
-    if steps_done == 1:
-        y_pred = [out[0] for out in all_outs]
     else:
-        y_pred = [np.concatenate(out) for out in all_outs]
+        if steps_done == 1:
+            y_pred = [out[0] for out in all_outs]
+        else:
+            y_pred = [np.concatenate(out) for out in all_outs]
 
     if len(all_ins) == 1:
         if steps_done == 1:
             y_true = all_ins[0][0]
         else:
             y_true = np.concatenate(all_ins[0])
-    if steps_done == 1:
-        y_true = [y[0] for y in all_ins]
     else:
-        y_true = [np.concatenate(y) for y in all_ins]
+        if steps_done == 1:
+            y_true = [y[0] for y in all_ins]
+        else:
+            y_true = [np.concatenate(y) for y in all_ins]
 
     return y_true, y_pred

@@ -3,7 +3,7 @@ import sklearn.metrics
 
 
 def log_loss(y_true, y_pred):
-    return sklearn.metrics.log_loss(y_true, y_pred)
+    return sklearn.metrics.log_loss(y_true, y_pred, eps=1e-6)
 
 
 def accuracy_score(y_true, y_pred):
