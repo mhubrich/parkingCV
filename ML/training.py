@@ -112,9 +112,9 @@ def predict(model, iterator_test):
     i = 0
     for _ in range(len(iterator_test)):
         X, y = iterator_test.next()
-        pred = model.predict_on_batch(X)
-        y_true[i:len(y)] = y
-        y_pred[i:len(y)] = pred
+        pred = model.predict_on_batch(X)[:,0]
+        y_true[i:i+len(y)] = y
+        y_pred[i:i+len(y)] = pred
         i += len(y)
     return y_true, y_pred
 

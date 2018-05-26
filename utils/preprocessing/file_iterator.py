@@ -87,7 +87,7 @@ class FileIterator(Iterator):
         classes = set()
         for f in self.filenames:
             classes.add(os.path.split(os.path.split(f)[0])[-1])
-        classes = list(classes)
+        classes = sorted(list(classes))
         self.num_classes = len(classes)
         self.class_indices = dict(zip(classes, range(len(classes))))
         num_files = len(self.filenames)
