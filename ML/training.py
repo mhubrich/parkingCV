@@ -6,9 +6,16 @@ import numpy as np
 from keras.optimizers import RMSprop
 from keras.callbacks import EarlyStopping, CSVLogger, ReduceLROnPlateau
 
+from utils.predict_generator import predict_generator
 from utils.my_model_checkpoint import MyModelCheckpoint
 from utils.preprocessing.image_data_generator import ImageDataGenerator
 from ML.get_model import get_model
+
+
+def _check_model_availability(model):
+    if model is None or model.lower() not in ('inception', 'xception', 'densenet121'):
+        raise ValueError('Invalid value for `model`: ', model,
+                         '; valid values are: `inception`, `xception`, `densenet121`.')
 
 
 def get_data(f_train, f_val, f_test,
@@ -93,7 +100,7 @@ def training(model, iterator_train, iterator_val,
                             shuffle=True,
                             initial_epoch=0)
     if path_checkpoints:
-        return model, model_checkpoint.path_best_weights
+        model.load_weights(model_checkpoint.path_best_weights)
     return model
 
 
@@ -107,16 +114,12 @@ def evaluate(model, iterator_test):
 
 
 def predict(model, iterator_test):
-    y_true = np.zeros(iterator_test.n, dtype=np.int32)
-    y_pred = np.zeros(iterator_test.n, dtype=np.int32)
-    i = 0
-    for _ in range(len(iterator_test)):
-        X, y = iterator_test.next()
-        pred = model.predict_on_batch(X)[:,0]
-        y_true[i:i+len(y)] = y
-        y_pred[i:i+len(y)] = pred
-        i += len(y)
-    return y_true, y_pred
+    return predict_generator(model, iterator_test,
+                             steps=len(iterator_test),
+                             max_queue_size=2*iterator_test.batch_size,
+                             workers=3,
+                             use_multiprocessing=True,
+                             verbose=1)
 
 
 def train(model, iterator_train, iterator_val,
@@ -129,6 +132,7 @@ def train(model, iterator_train, iterator_val,
           dir_weights=None,
           path_checkpoints=None,
           path_logs=None):
+    _check_model_availability(model)
     # 1) Train only FC layer for one epoch
     model = set_model(model, dir_weights,
                       target_size=target_size,
@@ -138,12 +142,10 @@ def train(model, iterator_train, iterator_val,
     model = training(model, iterator_train, iterator_val, epochs=1)
     # 2) Train complete model
     model = set_model(model=model, freeze=-1, lr=0.0001)
-    model, path_best_weights = training(model, iterator_train, iterator_val,
-                                        path_checkpoints=path_checkpoints,
-                                        path_logs=path_logs,
-                                        epochs=7)
-    # 3) Evaluate model on test set using best weights
-    model.load_weights(path_best_weights)
+    model = training(model, iterator_train, iterator_val,
+                     path_checkpoints=path_checkpoints,
+                     path_logs=path_logs,
+                     epochs=7)
     return model
 
 
@@ -157,9 +159,7 @@ def train_eval(model, files_train, files_val, files_test,
                dir_weights=None,
                path_checkpoints=None,
                path_logs=None):
-    if model is None or model.lower() not in ('inception', 'xception', 'densenet121'):
-        raise ValueError('Invalid value for `model`: ', model,
-                         '; valid values are: `inception`, `xception`, `densenet121`.')
+    _check_model_availability(model)
     iterator_train, iterator_val, iterator_test = get_data(files_train,
                                                            files_val, files_test,
                                                            preprocess_input=preprocess_input,
@@ -189,9 +189,7 @@ def train_predict(model, files_train, files_val, files_test,
                   dir_weights=None,
                   path_checkpoints=None,
                   path_logs=None):
-    if model is None or model.lower() not in ('inception', 'xception', 'densenet121'):
-        raise ValueError('Invalid value for `model`: ', model,
-                         '; valid values are: `inception`, `xception`, `densenet121`.')
+    _check_model_availability(model)
     iterator_train, iterator_val, iterator_test = get_data(files_train,
                                                            files_val, files_test,
                                                            preprocess_input=preprocess_input,
