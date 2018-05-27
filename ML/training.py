@@ -4,7 +4,7 @@ various models, e.g. InceptionV3, Xception or DenseNet121.
 """
 import numpy as np
 from keras.optimizers import RMSprop
-from keras.callbacks import EarlyStopping, CSVLogger, ReduceLROnPlateau
+from keras.callbacks import EarlyStopping, CSVLogger, ReduceLROnPlateau, LearningRateScheduler
 
 from utils.predict_generator import predict_generator
 from utils.my_model_checkpoint import MyModelCheckpoint
@@ -74,11 +74,12 @@ def training(model, iterator_train, iterator_val,
              path_checkpoints=None,
              path_logs=None):
     callbacks = [EarlyStopping(patience=2),
-                 ReduceLROnPlateau(factor=0.5,
-                                   patience=1,
-                                   min_delta=0.005,
-                                   min_lr=1e-6,
-                                   verbose=1)]
+                 LearningRateScheduler(lambda epoch, lr: lr * max(1. - epoch, 0.7), verbose=1)]
+                 #ReduceLROnPlateau(factor=0.5,
+                 #                  patience=1,
+                 #                  min_delta=0.005,
+                 #                  min_lr=1e-6,
+                 #                  verbose=1)]
     if path_checkpoints:
         model_checkpoint = MyModelCheckpoint(path_checkpoints,
                                              save_best_only=True,
@@ -133,15 +134,16 @@ def train(model, iterator_train, iterator_val,
           path_checkpoints=None,
           path_logs=None):
     _check_model_availability(model)
-    # 1) Train only FC layer for one epoch
-    model = set_model(model, dir_weights,
-                      target_size=target_size,
-                      dense=dense,
-                      freeze=freeze,
-                      lr=0.001)
-    model = training(model, iterator_train, iterator_val, epochs=1)
+    # 1) Train only FC layer for two epochs
+    if len(dense) > 0:
+        model = set_model(model, dir_weights,
+                          target_size=target_size,
+                          dense=dense,
+                          freeze=freeze,
+                          lr=0.001)
+        model = training(model, iterator_train, iterator_val, epochs=2)
     # 2) Train complete model
-    model = set_model(model=model, freeze=-1, lr=0.0001)
+    model = set_model(model, dir_weights, target_size=target_size, dense=dense, freeze=-1, lr=0.0001)
     model = training(model, iterator_train, iterator_val,
                      path_checkpoints=path_checkpoints,
                      path_logs=path_logs,

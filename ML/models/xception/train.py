@@ -27,10 +27,10 @@ if __name__ == "__main__":
                                                                val_size=0.2,
                                                                test_size=0.2,
                                                                seed=seed)
-    loss, acc = train_eval(model, files_train, files_val, files_test,
+    y_true, y_pred = train_predict(model, files_train, files_val, files_test,
                                    preprocess_input=preprocess_input,
                                    target_size=target_size,
-                                   dense=[1024],
+                                   dense=[],
                                    freeze=132,
                                    batch_size=batch_size,
                                    seed=seed,
@@ -38,11 +38,11 @@ if __name__ == "__main__":
                                    path_checkpoints=path_checkpoints,
                                    path_logs=path_logs)
 
-    #loss = metrics.log_loss(y_true, y_pred)
-    #acc = metrics.accuracy_score(y_true, y_pred)
-    #auc = metrics.roc_auc_score(y_true, y_pred)
-    #tp = metrics.TP(y_true, y_pred)
-    #tn = metrics.TN(y_true, y_pred)
-    #print('Test results: Loss: %.3f - Acc: %.3f - AUC: %.3f - TP: %.3f - TN: %.3f'
-    #      % (loss, acc, auc, tp, tn))
-    print('Test results: Loss: %.3f - Acc: %.3f' % (loss, acc))
+    loss = metrics.log_loss(y_true, y_pred)
+    acc = metrics.accuracy_score(y_true, y_pred)
+    auc = metrics.roc_auc_score(y_true, y_pred)
+    tp = metrics.TP(y_true, y_pred)
+    tn = metrics.TN(y_true, y_pred)
+    print('Test results: Loss: %.3f - Acc: %.3f - AUC: %.3f - TP: %.3f - TN: %.3f'
+          % (loss, acc, auc, tp, tn))
+
