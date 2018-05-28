@@ -104,3 +104,4 @@ ENV/
 .DS_Store
 *.h5
 *.hdf5
+mapscache/

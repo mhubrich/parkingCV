@@ -13,6 +13,7 @@ import os
 import sys
 import math
 import time
+import numpy as np
 import skimage.io
 
 from skimage.color import rgba2rgb
@@ -21,14 +22,15 @@ from skimage.color import rgba2rgb
 try:
     from key import _KEY
 except:
-    _KEY = ''
+    _KEY = None
 
 _EARTHPIX = 268435456  # Number of pixels in half the earth's circumference at zoom = 21
 _DEGREE_PRECISION = 4  # Number of decimal places for rounding coordinates
-_HEIGHT_LOGO = 44      # Height of the Google logo in pixels
+_HEIGHT_LOGO = 22      # Height of the Google logo in pixels
 _MAX_TILESIZE = 640    # Largest tile we can grab without paying
-_TILESIZE_h = _MAX_TILESIZE-_HEIGHT_LOGO # Largest tile height without logo
-_TILESIZE_w = _MAX_TILESIZE              # Largest tile width
+
+_TILESIZE_h = _MAX_TILESIZE - 2 * _HEIGHT_LOGO # Largest tile height without logo
+_TILESIZE_w = _MAX_TILESIZE                    # Largest tile width
 
 _pixrad = _EARTHPIX / math.pi
 
@@ -42,12 +44,15 @@ def _pixels_to_degrees(pixels, zoom):
 
 
 def _grab_tile(lat, lon, zoom, scale, maptype, _TILESIZE_h, _TILESIZE_w):
-    urlbase = 'https://maps.googleapis.com/maps/api/staticmap?center=%f,%f&zoom=%d&scale=%d&maptype=%s&size=%dx%d&format=jpg'
-    urlbase += _KEY
+    urlbase = ('https://maps.googleapis.com/maps/api/staticmap?'
+               'style=feature:all|element:labels|visibility:off'
+               '&center=%f,%f&zoom=%d&scale=%d&maptype=%s&size=%dx%d')
+    if _KEY:
+        urlbase += '&key=' + _KEY
 
-    specs = lat, lon, zoom, scale, maptype, _TILESIZE_h, _TILESIZE_w
+        specs = lat, lon, zoom, scale, maptype, _TILESIZE_w
 
-    filename = 'mapscache/' + ('%f_%f_%d_%d_%s_%d_%d' % specs)
+    filename = 'mapscache/' + ('%f_%f_%d_%d_%s_%d_%d' % (specs + (_TILESIZE_h,)))
 
     if maptype == 'roadmap':
         filename += '.png'
@@ -57,12 +62,12 @@ def _grab_tile(lat, lon, zoom, scale, maptype, _TILESIZE_h, _TILESIZE_w):
     if os.path.isfile(filename):
         tile = skimage.io.imread(filename)
     else:
-        url = urlbase % specs
+        url = urlbase % (specs + (_TILESIZE_w,))
         tile = skimage.io.imread(url)
         # Some tiles are in mode `RGBA` and need to be converted
-        if len(tile.shape) == 4:
+        if tile.shape[-1] == 4:
             tile = rgba2rgb(tile)
-        tile = tile[_HEIGHT_LOGO:-_HEIGHT_LOGO]
+        tile = tile[_HEIGHT_LOGO:-_HEIGHT_LOGO,:]
         if not os.path.exists('mapscache'):
             os.mkdir('mapscache')
         skimage.io.imsave(filename, tile)
@@ -85,7 +90,7 @@ def fetchTiles(latitude, longitude, zoom, scale, maptype, radius_meters=None, de
     '''
     if scale != 1:
         raise ValueError('Currently, only `scale=1` supported.')
-    
+
     latitude = _roundto(latitude, _DEGREE_PRECISION)
     longitude = _roundto(longitude, _DEGREE_PRECISION)
 
