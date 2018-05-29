@@ -39,7 +39,7 @@ def predict_map(map, predict, window_h, window_w, stride, batch_size, **kwargs):
         for j in range(len(predicitons)):
             y1, y2 = batch_pos[j, 0], batch_pos[j, 0] + window_h
             x1, x2 = batch_pos[j, 1], batch_pos[j, 1] + window_w
-            map_proba[y1:y2, x1:x2] = predicitons[j]
+            map_proba[y1:y2, x1:x2] += predicitons[j]
             map_counts[y1:y2, x1:x2] += 1
     map_proba /= map_counts
     return map_proba[:map.shape[0], :map.shape[1]]
@@ -70,8 +70,8 @@ def predict_mirror(batch, model, target_size, preprocess_input):
         batch_augmented[i * 4 + 1] = preprocess_input(img_resized[::-1, :, :])
         batch_augmented[i * 4 + 2] = preprocess_input(img_resized[:, ::-1, :])
         batch_augmented[i * 4 + 3] = preprocess_input(img_resized[::-1, ::-1, :])
-    preds = model.predict_on_batch(batch_augmented)
+    preds = model.predict_on_batch(batch_augmented)[:, 0]
     y_pred = np.zeros(len(batch), dtype=np.float32)
     for i in range(len(batch)):
-        y_pred[i] = np.mean(y_pred[i * 4:(i+1) * 4])
+        y_pred[i] = np.mean(preds[i * 4:(i+1) * 4])
     return y_pred
