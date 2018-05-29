@@ -1,4 +1,5 @@
 import numpy as np
+import skimage.transform
 
 from utils.sliding_window import SlidingWindow
 
@@ -44,7 +45,7 @@ def predict_map(map, predict, window_h, window_w, stride, batch_size, **kwargs):
     return map_proba[:map.shape[0], :map.shape[1]]
 
 
-def predict_mirror(batch, model, preprocess_input):
+def predict_mirror(batch, model, target_size, preprocess_input):
     """Returns predictions of each sample in `batch` by taking the average
     prediction produced by `model` of
       * the original image,
@@ -54,16 +55,21 @@ def predict_mirror(batch, model, preprocess_input):
         Arguments:
           batch: Array of images. Has dimensions of (n, height, width, channels).
           model: Model. Classifier used to make predictions of images.
+          target_size: Tuple of two Integers. The input shape of the model.
           preprocess_input: Function. Preprocessing of input images.
         Returns:
           Array of predictions of `batch`.
     """
-    batch_augmented = np.zeros((len(batch)*4,) + batch.shape[1:], dtype=np.float32)
+    batch_augmented = np.zeros((len(batch)*4,) + target_size + (batch.shape[-1],),
+                               dtype=np.float32)
     for i, img in enumerate(batch):
-        batch_augmented[i * 4 + 0] = preprocess_input(img)
-        batch_augmented[i * 4 + 1] = preprocess_input(img[::-1, :, :])
-        batch_augmented[i * 4 + 2] = preprocess_input(img[:, ::-1, :])
-        batch_augmented[i * 4 + 3] = preprocess_input(img[::-1, ::-1, :])
+        img_resized = skimage.transform.resize(img,
+                                               target_size,
+                                               preserve_range=True)
+        batch_augmented[i * 4 + 0] = preprocess_input(img_resized)
+        batch_augmented[i * 4 + 1] = preprocess_input(img_resized[::-1, :, :])
+        batch_augmented[i * 4 + 2] = preprocess_input(img_resized[:, ::-1, :])
+        batch_augmented[i * 4 + 3] = preprocess_input(img_resized[::-1, ::-1, :])
     preds = model.predict_on_batch(batch_augmented)
     y_pred = np.zeros(len(batch), dtype=np.float32)
     for i in range(len(batch)):
