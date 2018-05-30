@@ -50,7 +50,7 @@ def _grab_tile(lat, lon, zoom, scale, maptype, _TILESIZE_h, _TILESIZE_w):
     if _KEY:
         urlbase += '&key=' + _KEY
 
-        specs = lat, lon, zoom, scale, maptype, _TILESIZE_w
+    specs = lat, lon, zoom, scale, maptype, _TILESIZE_w
 
     filename = 'mapscache/' + ('%f_%f_%d_%d_%s_%d_%d' % (specs + (_TILESIZE_h,)))
 
