@@ -66,10 +66,10 @@ def predict_mirror(batch, model, target_size, preprocess_input):
         img_resized = skimage.transform.resize(img,
                                                target_size,
                                                preserve_range=True)
-        batch_augmented[i * 4 + 0] = preprocess_input(img_resized)
-        batch_augmented[i * 4 + 1] = preprocess_input(img_resized[::-1, :, :])
-        batch_augmented[i * 4 + 2] = preprocess_input(img_resized[:, ::-1, :])
-        batch_augmented[i * 4 + 3] = preprocess_input(img_resized[::-1, ::-1, :])
+        batch_augmented[i * 4 + 0] = preprocess_input(np.array(img_resized, copy=True))
+        batch_augmented[i * 4 + 1] = preprocess_input(np.array(img_resized, copy=True)[::-1, :, :])
+        batch_augmented[i * 4 + 2] = preprocess_input(np.array(img_resized, copy=True)[:, ::-1, :])
+        batch_augmented[i * 4 + 3] = preprocess_input(np.array(img_resized, copy=True)[::-1, ::-1, :])
     preds = model.predict_on_batch(batch_augmented)[:, 0]
     y_pred = np.zeros(len(batch), dtype=np.float32)
     for i in range(len(batch)):
