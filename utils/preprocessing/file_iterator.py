@@ -90,6 +90,7 @@ class FileIterator(Iterator):
         classes = sorted(list(classes))
         self.num_classes = len(classes)
         self.class_indices = dict(zip(classes, range(len(classes))))
+        print(self.class_indices)
         num_files = len(self.filenames)
         if split:
             start, stop = int(split[0] * num_files), int(split[1] * num_files)

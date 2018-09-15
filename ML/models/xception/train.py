@@ -17,7 +17,7 @@ if __name__ == "__main__":
     batch_size = 32
     seed = 0
     dir_weights = '/home/mhubrich/.parkingCV_weights/'
-    path_images = '/home/mhubrich/maps_300x300_resized_224x224/'
+    path_images = '/home/mhubrich/maps_224x224_scale_1/'
     path_checkpoints = 'weights.{epoch:02d}-{val_loss:.3f}.hdf5'
     path_logs = 'training.log'
     files = list_files(path_images, 'satellite')

@@ -74,7 +74,7 @@ def training(model, iterator_train, iterator_val,
              path_checkpoints=None,
              path_logs=None):
     callbacks = [EarlyStopping(patience=2),
-                 LearningRateScheduler(lambda epoch, lr: lr * max(1. - epoch, 0.7), verbose=1)]
+                 LearningRateScheduler(lambda epoch, lr: lr * max(1. - epoch, 0.9), verbose=0)]
                  #ReduceLROnPlateau(factor=0.5,
                  #                  patience=1,
                  #                  min_delta=0.005,
@@ -147,7 +147,7 @@ def train(model, iterator_train, iterator_val,
     model = training(model, iterator_train, iterator_val,
                      path_checkpoints=path_checkpoints,
                      path_logs=path_logs,
-                     epochs=7)
+                     epochs=10)
     return model
 
 
